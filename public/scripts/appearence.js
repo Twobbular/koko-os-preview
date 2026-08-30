@@ -1,19 +1,21 @@
 let appIconShapes='squircle'
-//appIconShapes = 'circle'
+appIconShapes = 'circle'
 let polygon = 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)'
 let backgroundMove=true;
-//let backgroundImage = "/public/assets/images/boliviainteligente-37WxvlfW3to-unsplash.jpg"//'https://images.unsplash.com/photo-1506744038136-46273834b3fb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80'
+let backgroundImage = "/public/assets/images/boliviainteligente-37WxvlfW3to-unsplash.jpg"//'https://images.unsplash.com/photo-1506744038136-46273834b3fb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80' //"https://github.com/kokorocks/koko-os-preview/blob/main/public/assets/images/boliviainteligente-37WxvlfW3to-unsplash.jpg?raw=true"//
 let virtual_brightness=false;
 window.colorScheme='dark';//'light';
 let columns = 4;
 let gridRows = 7;
-let isdock = true;
+let isdock = false;
 let docklen = 4;
-let appSize = 2;
+let appSize = 1;
 
-let appSizes = [50, 55, 60]
+let appSizes = [4, 50, 60]
 //22px
-
+if (defaultPages.length === 0) {
+    defaultPages.push(Array.from({ length: gridRows * gridCols }, () => null));
+}
 if (appSize) document.documentElement.style.setProperty('--app-size', `${appSizes[appSize]}px`);
 
 if (isdock && docklen < 5) {

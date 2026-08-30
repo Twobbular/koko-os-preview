@@ -14,11 +14,13 @@ const SETTINGS_TRIGGER_ZONE = 0.10; // Top 10%
 const DRAWER_TRIGGER_ZONE = 0.80;   // Bottom 15%
 const PREVIEW_TRIGGER_ZONE = 0.92;  // Very bottom 5% (Home Bar area)
 const FLICK_VELOCITY = 0.4;         
+const PAGE_SWIPE_RATIO = 0.3;       // Fraction of screen width needed to change page
 
 let activeGesture = null; 
 let activeApp = null;
 let rafPending = false;
 let currentDeltaY = 0;
+let currentDeltaX = 0;
 let shadeState = 'compact'; // 'compact' or 'expanded'
 let shadeIsMoving = false; // Prevent shade re-triggering
 let appOpen=false;
@@ -34,6 +36,24 @@ const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 // iOS-style rubber banding
 function rubberBand(distance, dimension, resistance = 0.55) {
     return (distance * dimension * resistance) / (dimension + resistance * distance);
+}
+
+// Mirrors the math in rendering.js's animateBackground(), but computed
+// on-demand (no animation) so we can drag the wallpaper in real time.
+// Relies on bgImage / getCoverSize / getPageCount / screenEl from rendering.js.
+function getLivePixelsPerPage() {
+    if (typeof bgImage === 'undefined' || !bgImage.loaded) return 0;
+
+    const vw = screenEl.clientWidth;
+    const vh = screenEl.clientHeight;
+    const cover = getCoverSize(bgImage.width, bgImage.height, vw, vh);
+
+    const maxIndex = Math.max(1, getPageCount() - 1);
+    const bgExtra = Math.max(0, cover.width - vw);
+    const pageScrollWidth = maxIndex * vw;
+    const totalTravel = Math.min(bgExtra, pageScrollWidth);
+
+    return totalTravel / maxIndex;
 }
 
 
@@ -65,6 +85,7 @@ hammer.on('panstart', (e) => {
     activeGesture = null;
     activeApp = null;
     currentDeltaY = 0;
+    currentDeltaX = 0;
 
     // 1. SHADE INTERACTION (Toggle or Close)
     if (isShadeOpen()) {
@@ -124,6 +145,16 @@ hammer.on('panstart', (e) => {
         }
         return;
     }
+
+    // 5. HOME SCREEN PAGE SWIPE (live-tracked, follows the finger)
+    // Only takes over on the home screen, when there's no app open and no
+    // folder overlay to navigate instead (folder paging stays on the
+    // discrete swipeleft/swiperight recognizer below).
+    if (noAppOpen() && !folderModal.classList.contains('open')) {
+        activeGesture = 'page_swipe';
+        slider.style.transition = 'none';
+        return;
+    }
 });
 
 hammer.on('swipeup', (e) => {
@@ -138,8 +169,9 @@ hammer.on('swipeup', (e) => {
 hammer.on('panmove', (e) => {
     if (!activeGesture || isDragging || isDraggingAW) return;    console.log(isDraggingAW)
     
-    // Ensure deltaY is a number and handle properly
+    // Ensure deltaY/deltaX are numbers and handle properly
     currentDeltaY = e.deltaY || 0;
+    currentDeltaX = e.deltaX || 0;
 
     if (!rafPending) {
         rafPending = true;
@@ -152,6 +184,7 @@ function handleDragFrame() {
     rafPending = false;
 
     const screenH = window.innerHeight;
+    const screenW = window.innerWidth;
     const maxPull = screenH * 0.9;
 
     switch (activeGesture) {
@@ -230,6 +263,43 @@ function handleDragFrame() {
               `translateY(${-eased * 35}px) translateX(-50%)`;
             break;
         }
+
+        /* ================= HOME PAGE SWIPE ================= */
+        case 'page_swipe': {
+            let dx = currentDeltaX;
+
+            const atFirstPage = currentPage === 0;
+            const atLastPage = currentPage === pages.length - 1;
+
+            // Rubber-band past the first/last page instead of over-scrolling
+            if (atFirstPage && dx > 0) {
+                dx = rubberBand(dx, screenW);
+            } else if (atLastPage && dx < 0) {
+                dx = -rubberBand(Math.abs(dx), screenW);
+            }
+
+            const percent = (dx / screenW) * 100;
+            slider.style.transform =
+                `translateX(calc(-${currentPage * 100}% + ${percent}%))`;
+
+            // Drag the wallpaper along with the page, in lockstep with the slider
+            if (backgroundMove) {
+                const pixelsPerPage = getLivePixelsPerPage();
+                if (pixelsPerPage > 0) {
+                    // A WAAPI animation from a previous page change would
+                    // otherwise keep overriding our direct style below
+                    if (bgAnim) {
+                        bgAnim.cancel();
+                        bgAnim = null;
+                    }
+
+                    const fraction = -dx / screenW; // matches page direction (swipe left => next page)
+                    lastBgOffset = currentPage * pixelsPerPage + fraction * pixelsPerPage;
+                    screenEl.style.backgroundPosition = `-${lastBgOffset}px center`;
+                }
+            }
+            break;
+        }
         /*case 'split_open': {
     if (currentDeltaY >= 0) return;
 
@@ -258,6 +328,7 @@ hammer.on('panend', (e) => {
     const velocity = e.velocityY;
     const distance = Math.abs(e.deltaY);
     const screenH = window.innerHeight;
+    const screenW = window.innerWidth;
     const absVelocity = Math.abs(velocity);
     const isFast = absVelocity > 0.45;
 
@@ -356,6 +427,39 @@ hammer.on('panend', (e) => {
             }
             appsbar.style.transform = `translateY(0) translateX(-50%)`;
             break;
+
+        case 'page_swipe': {
+            const dx = currentDeltaX;
+            const velX = e.velocityX;
+            const passedThreshold = Math.abs(dx) > screenW * PAGE_SWIPE_RATIO;
+            const isFastSwipe = Math.abs(velX) > FLICK_VELOCITY;
+
+            let targetPage = currentPage;
+
+            if (dx < 0 && (passedThreshold || (isFastSwipe && velX < 0))) {
+                // Swiped left → next page (or dismiss info popup)
+                if (infoPopup.classList.contains('open')) {
+                    infoPopup.classList.remove('open');
+                } else if (currentPage < pages.length - 1) {
+                    targetPage = currentPage + 1;
+                }
+            } else if (dx > 0 && (passedThreshold || (isFastSwipe && velX > 0))) {
+                // Swiped right → previous page (or dismiss / open info popup)
+                if (infoPopup.classList.contains('open')) {
+                    infoPopup.classList.remove('open');
+                } else if (currentPage > 0) {
+                    targetPage = currentPage - 1;
+                } else if (currentPage === 0 && typeof openInfo === 'function') {
+                    openInfo('news');
+                }
+            }
+
+            // updatePageView sets its own transition + transform, so this
+            // both snaps forward on a successful swipe and springs back
+            // to the current page when the drag didn't clear the threshold.
+            updatePageView(targetPage);
+            break;
+        }
         
         case 'split_open': {
             splitApp.style.transition = 'all 0.35s cubic-bezier(0.165, 0.84, 0.44, 1)';
@@ -392,7 +496,12 @@ hammer.on('panend', (e) => {
 });
 
 // (Keep your swipeleft/swiperight and helpers as they were)
-// ---------- HORIZONTAL SWIPES (Home Pages) ----------
+// ---------- HORIZONTAL SWIPES (Folder paging & app switching) ----------
+// NOTE: Home-screen page navigation used to live here, but it's now handled
+// by the live-tracked 'page_swipe' gesture above (see panstart/panmove/panend),
+// so it's been removed from this handler to avoid double-advancing pages.
+// Folder paging and switching between open apps still use this discrete
+// swipe recognizer since they aren't (yet) drag-tracked.
 hammer.on('swipeleft swiperight', (e) => {
     
     if (activeGesture || isDragging || isShadeOpen()  || isDraggingAW) return;
@@ -429,19 +538,8 @@ hammer.on('swipeleft swiperight', (e) => {
             }
             return;
         }
-        
-        // Next Page
-        if (currentPage < pages.length - 1 && !infoPopup.classList.contains('open') && noAppOpen()) {
-            updatePageView(currentPage + 1);
-        } else if (infoPopup.classList.contains('open') && noAppOpen()) {
-            infoPopup.classList.remove('open');
-        } else if(!noAppOpen()) {
-            // Allow swiping through pages even with app open
-            if (currentPage < pages.length - 1) {
-                //currentPage++;
-                //updatePageView(currentPage + 1);
-            }
 
+        if(!noAppOpen()) {
             // Swipe through apps
             if(centerY <= 1000 || yRatio <= 0.75 ){
                 const area = document.getElementById('multiappsarea');
@@ -457,6 +555,7 @@ hammer.on('swipeleft swiperight', (e) => {
             }
             //alert('left')
         }
+        // noAppOpen() case is now handled by the live 'page_swipe' gesture.
     } 
     else if (e.type === 'swiperight') {
         console.log('r')
@@ -468,21 +567,8 @@ hammer.on('swipeleft swiperight', (e) => {
             }
             return;
         }
-        
-        // Previous Page or Open News
-        if (currentPage > 0 && noAppOpen() && !infoPopup.classList.contains('open')) {
-            updatePageView(currentPage - 1);
-        } else if (infoPopup.classList.contains('open') && noAppOpen()) {
-            infoPopup.classList.remove('open');
-        } else if (currentPage === 0 && !infoPopup.classList.contains('open') && noAppOpen()) {
-            openInfo('news');
-        } else if(!noAppOpen()) {
-            // Allow swiping back through pages even with app open
-            if (currentPage > 0) {
-                //currentPage--;
-                //updatePageView(currentPage - 1);
-            }
 
+        if(!noAppOpen()) {
             // Swipe through apps
             if(yRatio <= 0.75 || true){
                 const area = document.getElementById('multiappsarea');
@@ -498,6 +584,7 @@ hammer.on('swipeleft swiperight', (e) => {
             }
             //alert('right')
         }
+        // noAppOpen() case is now handled by the live 'page_swipe' gesture.
     }
 });
 

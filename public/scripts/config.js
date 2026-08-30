@@ -49,10 +49,94 @@ const appDB = {
 };
 
 const defaultPages = [
+    [
+        {
+            "type": "widget",
+            "app": "clock",
+            "widget": "full-clock-widget.htm",
+            "width": 5,
+            "height": 1
+        },
+        null,
+        null,
+        null,
+        null,
+        "weather",
+        "photos",
+        "mail",
+        "cal",
+        "notes",
+        "settings",
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+    ],
+    [
+        "files",
+        "clock",
+        "browser",
+        "store",
+        null,
+        null,
+        null,
+        null,
+        null,
+        {
+            "type": "widget",
+            "app": "clock",
+            "widget": "headphones-widget.htm",
+            "width": 2,
+            "height": 1
+        },
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+    ],
+    [
+        {
+            "type": "widget",
+            "app": "weather",
+            "widget": "weather-widget.htm",
+            "width": 5,
+            "height": 2
+        },
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+    ]
+]/*[
     [{ type: 'widget', app: 'clock', widget: 'full-clock-widget.htm', width: 5, height: 1 }, null, null, null, null, 'weather', 'photos', 'mail', 'cal', 'notes', 'settings', null, null, null, null, null, null, null, null],
     ['files', 'clock', 'browser', 'store', null, null, null, null, null, { type: 'widget', app: 'clock', widget: 'headphones-widget.htm', width: 2, height: 1 }, null, null, null, null, null, null, null, null, null, null],
     [{ type: 'widget', app: 'weather', widget: 'weather-widget.htm', width: 5, height: 2 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
-];
+];*/
 
 // Widget examples (can be added to pages)
 // { type: 'widget', app: 'weather', widget: 'weather-widget.htm', width: 2, height: 2 }

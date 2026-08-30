@@ -4,7 +4,7 @@
     --app-size: 50px;
     --grid-cols: 5;
     --grid-rows: 6; /* 4x5 Grid */
-    --item-size: 66px;
+    --item-size: 55px;
     --gap: 10px;
     --glass-bg: rgba(255, 255, 255, 0.2);
     --folder-bg: rgba(255, 255, 255, 0.35);
