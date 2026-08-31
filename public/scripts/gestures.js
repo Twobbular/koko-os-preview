@@ -150,7 +150,7 @@ hammer.on('panstart', (e) => {
     // Only takes over on the home screen, when there's no app open and no
     // folder overlay to navigate instead (folder paging stays on the
     // discrete swipeleft/swiperight recognizer below).
-    if (noAppOpen() && !folderModal.classList.contains('open')) {
+    if (noAppOpen() && !folderModal.classList.contains('open') && !isShadeOpen() && !isDraggingAW && !infoPopup.classList.contains('open') && !appDrawer.classList.contains('open')) {
         activeGesture = 'page_swipe';
         slider.style.transition = 'none';
         return;
