@@ -48,6 +48,7 @@
     <div class="app-toolbar">
         <h3 style="margin:0;">GalleryOS</h3>
         <button class="btn btn-primary" onclick="triggerAddNew()"><i class="fas fa-plus"></i> Add Photo</button>
+        <input type="file" id="photo-input" accept="image/*" style="display: none;" onchange="handleFileUpload(event)">
     </div>
 
     <div id="nanogallery2"></div>
@@ -88,9 +89,10 @@
     <div id="toast">Saved!</div>
 
     <script>
-        // --- 1. MOCK DATABASE (State Management) ---
-        // In a real app, this would be fetched from an API
-        let galleryData = [
+        // --- 1. STATE MANAGEMENT & LOCAL STORAGE ---
+        const STORAGE_KEY = 'gallery_os_data';
+
+        const defaultGalleryData = [
             {
                 src: 'https://images.unsplash.com/photo-1472214103451-9374bd1c798e?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80',
                 srct: 'https://images.unsplash.com/photo-1472214103451-9374bd1c798e?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80',
@@ -98,7 +100,7 @@
                 description: 'A beautiful morning hike.',
                 ID: 101,
                 lat: 46.577, 
-                lng: 7.905 // Swiss Alps coords
+                lng: 7.905
             },
             {
                 src: 'https://images.unsplash.com/photo-1550948537-130a1ce83314?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80',
@@ -107,10 +109,25 @@
                 description: 'Night photography in Tokyo.',
                 ID: 102,
                 lat: 35.676,
-                lng: 139.650 // Tokyo coords
+                lng: 139.650
             }
         ];
 
+        // Fetch stored photos or load default data
+        function loadGalleryData() {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            return stored ? JSON.parse(stored) : defaultGalleryData;
+        }
+
+        function saveToLocalStorage() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(galleryData));
+            } catch (e) {
+                alert("Storage full! LocalStorage usually has a ~5MB limit.");
+            }
+        }
+
+        let galleryData = loadGalleryData();
         let currentEditingId = null;
         let mapInstance = null;
         let markerInstance = null;
@@ -124,31 +141,26 @@
                 thumbnailGutterWidth: 5,
                 thumbnailGutterHeight: 5,
                 
-                // Lightbox Configuration
                 viewerToolbar: {
                     display: true,
                     standard: 'label',
-                    // We add a custom button 'infoButton'
                     minimized: 'minimizeButton, label, infoButton, fullscreenButton, closeButton' 
                 },
                 viewerTools: {
                     topLeft: 'label',
-                    topRight: 'customInfo, zoomButton, closeButton' // 'customInfo' is our hook
+                    topRight: 'customInfo, zoomButton, closeButton'
                 },
                 
-                // Custom Icon for Metadata/Map
                 icons: {
                     viewerCustomTool1: '<i class="fas fa-info-circle" style="font-size: 20px; color: #fff; text-shadow: 0 0 5px #000;"></i>'
                 },
 
-                // Event handling for the custom button
                 fnImgToolbarCustClick: function(customElementName, $customIcon, item) {
                     if (customElementName === 'customInfo') {
                         openEditor(item);
                     }
                 },
 
-                // Mobile Responsive
                 breakpoints: [
                     { breakpoints: 'xs', thumbnailHeight: 120 },
                     { breakpoints: 'sm', thumbnailHeight: 180 },
@@ -164,73 +176,93 @@
         });
 
         // --- 3. MAP & EDITOR LOGIC ---
+        function openEditor(item) {
+            let dataObj = galleryData.find(x => x.ID == item.ID);
 
-        // REPLACE your existing openEditor function with this:
+            if (!dataObj) {
+                console.error("Could not find metadata for image ID:", item.ID);
+                alert("Error: Metadata not found for this image.");
+                return; 
+            }
 
-function openEditor(item) {
-    console.log("Clicked Item ID:", item.ID); // Debugging: See what ID the gallery sends
+            currentEditingId = item.ID;
+            $('#meta-title').val(dataObj.title || "");
+            $('#meta-desc').val(dataObj.description || "");
+            
+            let lat = dataObj.lat || 0;
+            let lng = dataObj.lng || 0;
 
-    // 1. SAFE SEARCH: Find the object, but handle type mismatch (string vs number)
-    let dataObj = galleryData.find(x => x.ID == item.ID);
+            $('#meta-lat').val(lat);
+            $('#meta-lng').val(lng);
 
-    // 2. ERROR PREVENTION: If not found, stop here so we don't crash
-    if (!dataObj) {
-        console.error("Could not find metadata for image ID:", item.ID);
-        alert("Error: Metadata not found for this image.");
-        return; 
-    }
+            $('#editor-modal').fadeIn(200);
 
-    // 3. Populate form safely
-    currentEditingId = item.ID;
-    $('#meta-title').val(dataObj.title || ""); // Use dataObj, not item, to ensure we edit source
-    $('#meta-desc').val(dataObj.description || "");
-    
-    let lat = dataObj.lat || 0;
-    let lng = dataObj.lng || 0;
+            setTimeout(() => {
+                if (!mapInstance) {
+                    mapInstance = L.map('map-container').setView([lat, lng], 13);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '© OpenStreetMap'
+                    }).addTo(mapInstance);
+                } else {
+                    mapInstance.invalidateSize(); 
+                    mapInstance.setView([lat, lng], 13);
+                }
 
-    $('#meta-lat').val(lat);
-    $('#meta-lng').val(lng);
-
-    // Show Modal
-    $('#editor-modal').fadeIn(200);
-
-    // Initialize Map
-    setTimeout(() => {
-        if (!mapInstance) {
-            mapInstance = L.map('map-container').setView([lat, lng], 13);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap'
-            }).addTo(mapInstance);
-        } else {
-            mapInstance.invalidateSize(); 
-            mapInstance.setView([lat, lng], 13);
+                if (markerInstance) mapInstance.removeLayer(markerInstance);
+                markerInstance = L.marker([lat, lng]).addTo(mapInstance)
+                    .bindPopup("Photo Location").openPopup();
+            }, 100);
         }
-
-        if (markerInstance) mapInstance.removeLayer(markerInstance);
-        markerInstance = L.marker([lat, lng]).addTo(mapInstance)
-            .bindPopup("Photo Location").openPopup();
-    }, 100);
-}
 
         function closeModal() {
             $('#editor-modal').fadeOut(200);
         }
 
-        // --- 4. SAVE / DELETE / ADD LOGIC ---
+        // --- 4. UPLOAD, SAVE, AND DELETE LOGIC ---
+        function triggerAddNew() {
+            // Open device file selection menu
+            $('#photo-input').click();
+        }
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const base64Image = e.target.result;
+                const newID = Date.now(); // Unique ID generated from timestamp
+
+                galleryData.unshift({
+                    src: base64Image,
+                    srct: base64Image,
+                    title: file.name.replace(/\.[^/.]+$/, ""), // Uses file name minus extension
+                    description: 'Uploaded from device',
+                    ID: newID,
+                    lat: 43.6532, // Default coordinates (Toronto)
+                    lng: -79.3832
+                });
+
+                saveToLocalStorage();
+                refreshGallery();
+                showToast("Photo Uploaded Successfully");
+                
+                // Clear input value to allow re-uploading the same file if needed
+                event.target.value = '';
+            };
+
+            reader.readAsDataURL(file);
+        }
 
         function saveMetadata() {
-            // 1. Update the local data array
             let index = galleryData.findIndex(x => x.ID == currentEditingId);
             if (index !== -1) {
                 galleryData[index].title = $('#meta-title').val();
                 galleryData[index].description = $('#meta-desc').val();
-                // (Note: In a real app, you would send a POST request here)
+                saveToLocalStorage();
             }
 
-            // 2. Refresh Gallery to show changes
-            $('#nanogallery2').nanogallery2('destroy');
-            initGallery();
-
+            refreshGallery();
             closeModal();
             showToast("Metadata Saved!");
         }
@@ -238,33 +270,17 @@ function openEditor(item) {
         $('#btn-delete').click(function() {
             if(!confirm("Are you sure you want to delete this photo?")) return;
 
-            // Remove from array
             galleryData = galleryData.filter(x => x.ID !== currentEditingId);
+            saveToLocalStorage();
             
-            // Refresh
-            $('#nanogallery2').nanogallery2('destroy');
-            initGallery();
-            
+            refreshGallery();
             closeModal();
             showToast("Photo Deleted");
         });
 
-        function triggerAddNew() {
-            // Simulating adding a file
-            let newID = Math.floor(Math.random() * 10000);
-            galleryData.unshift({
-                src: 'https://images.unsplash.com/photo-1501854140884-074bf6bca23c?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80',
-                srct: 'https://images.unsplash.com/photo-1501854140884-074bf6bca23c?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80',
-                title: 'New Upload ' + newID,
-                description: 'Just added!',
-                ID: newID,
-                lat: 48.8566, // Default to Paris
-                lng: 2.3522
-            });
-
+        function refreshGallery() {
             $('#nanogallery2').nanogallery2('destroy');
             initGallery();
-            showToast("New Photo Added");
         }
 
         function showToast(msg) {
@@ -272,7 +288,6 @@ function openEditor(item) {
             t.text(msg).css('opacity', 1);
             setTimeout(() => t.css('opacity', 0), 2000);
         }
-
     </script>
 </body>
 </html>
