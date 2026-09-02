@@ -89,6 +89,10 @@ hammer.on('panstart', (e) => {
 
     // 1. SHADE INTERACTION (Toggle or Close)
     if (isShadeOpen()) {
+        // Tile editing owns the pointer while the expanded control center is in edit mode.
+        if (document.getElementById('shade-expanded').classList.contains('cc-edit')) {
+            return;
+        }
         // If pulling from top and shade is open, toggle between compact and expanded
         if (yRatio < SETTINGS_TRIGGER_ZONE) {
             activeGesture = 'shade_toggle';
@@ -159,7 +163,7 @@ hammer.on('panstart', (e) => {
 
 hammer.on('swipeup', (e) => {
     alert('bruh')
-    if(e.pointer===3){
+    if(e.pointer===3){ 
         alert('screenshot')
     } else if (infoPopup.classList.contains('open')){
         //infoPopup.classList.remove('open');

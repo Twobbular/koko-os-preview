@@ -21,6 +21,11 @@
     <link rel="stylesheet" href="assets/styles/systemnotification.css">
     <link rel="stylesheet" href="assets/styles/appwidgets.css">
     <link rel="stylesheet" href="assets/styles/statusbar.css">
+    <link rel="stylesheet" href="assets/styles/control-panel.css">
+
+
+<style id="combined-control-center-css">
+</style>
 
 </head>
 <body>
@@ -75,88 +80,24 @@
 
             <!-- EXPANDED STATE (pull down again) -->
             <div id="shade-expanded" class="shade-state">
-                <div class="shade-header">
-                    <div class="time-stack"><br>
-                        <span class="date-small">Mon, Jan 1</span>
-                    </div><br>
-                    <div class="shade-actions">
-                        <div class="icon-btn-ghost"><i class="fas fa-pencil-alt"></i></div>
-                        <div class="icon-btn-ghost"><i class="fas fa-cog"></i></div>
-                    </div>
+              <div class="cc-shell">
+                <div class="cc-header">
+                  <div class="cc-title">Control Center <small id="cc-hint">Tap controls · Edit to customize</small></div>
+                  <div class="cc-actions">
+                    <button class="cc-icon-btn" id="cc-edit-btn" type="button" aria-label="Edit controls" title="Edit controls"><i class="fas fa-pencil-alt"></i></button>
+                    <button class="cc-icon-btn" id="cc-settings-btn" type="button" aria-label="Control center settings" title="Control center settings"><i class="fas fa-cog"></i></button>
+                  </div>
                 </div>
-
-                <div class="shade-group control-card">
-                    <div class="sliders-stack">
-                        <div class="slider-container">
-                            <i class="fas fa-sun slider-icon" style="color: yellow;"></i>
-                            <input type="range" class="glass-slider" value="80">
-                        </div>
-                        <div class="slider-container">
-                            <i class="fas fa-volume-up slider-icon" style="color: rgb(20, 20, 255);"></i>
-                            <input type="range" class="glass-slider" value="45">
-                        </div>
-                    </div>
+                <div class="cc-scroll">
+                  <div class="cc-grid" id="active-grid"></div>
+                  <div class="cc-section" id="available-section">
+                    <div class="cc-section-title">More controls</div>
+                    <div class="cc-hint">Tap + to add, drag to reorder, use the corner handle to resize</div>
+                    <div class="cc-grid" id="available-grid"></div>
+                  </div>
                 </div>
-
-                <!-- QUICK SETTINGS GRID (Origin OS Style) -->
-                <div class="qs-grid-expanded">
-                    <div class="qs-tile">
-                        <i class="fas fa-power-off"></i>
-                        <span>Power off</span>
-                    </div>
-                    <div class="qs-tile is-toggle" data-toggle aria-checked="false">
-                        <input type="checkbox" class="qs-checkbox" hidden>
-                        <i class="fab fa-bluetooth-b"></i>
-                        <span>Bluetooth</span>
-                    </div>
-                    <div class="qs-tile is-toggle" data-toggle aria-checked="false">
-                        <input type="checkbox" class="qs-checkbox" hidden>
-                        <i class="fas fa-sync-alt"></i>
-                        <span>Auto-rotate</span>
-                    </div>
-                    <div class="qs-tile is-toggle" data-toggle aria-checked="false">
-                        <input type="checkbox" class="qs-checkbox" hidden>
-                        <i class="fas fa-flashlight"></i>
-                        <span>Flashlight</span>
-                    </div>
-                    <div class="qs-tile is-toggle" data-toggle aria-checked="false">
-                        <input type="checkbox" class="qs-checkbox" hidden>
-                        <i class="fas fa-battery-half"></i>
-                        <span>Battery Saver</span>
-                    </div>
-                    <div class="qs-tile">
-                        <i class="fas fa-location-dot"></i>
-                        <span>Location</span>
-                    </div>
-                    <div class="qs-tile is-toggle" data-toggle aria-checked="false">
-                        <input type="checkbox" class="qs-checkbox" hidden>
-                        <i class="fas fa-wifi"></i>
-                        <span>Hotspot</span>
-                    </div>
-                    <div class="qs-tile">
-                        <i class="fas fa-wallet"></i>
-                        <span>Wallet</span>
-                    </div>
-                    <div class="qs-tile">
-                        <i class="fas fa-calculator"></i>
-                        <span>Calculator</span>
-                    </div>
-                    <div class="qs-tile is-toggle" data-toggle aria-checked="false">
-                        <input type="checkbox" class="qs-checkbox" hidden>
-                        <i class="fas fa-gamepad"></i>
-                        <span>Game Mode</span>
-                    </div>
-                    <div class="qs-tile">
-                        <i class="fas fa-qrcode"></i>
-                        <span>Scan</span>
-                    </div>
-                    <div class="qs-tile">
-                        <i class="fas fa-bolt"></i>
-                        <span>Speed up</span>
-                    </div>
-                </div>
-
-                <!-- MEDIA WIDGET -->
+              </div>
+<!-- MEDIA WIDGET -->
                 <div class="shade-group media-compact">
                     <div class="media-art" style="background-image: url('https://images.unsplash.com/photo-1493225255756-d9584f8606e9?q=80&w=150&auto=format&fit=crop');"></div>
                     <div class="media-details">
@@ -272,5 +213,97 @@
     <script src="scripts/notifs.js"></script>
     <script src="scripts/message-boxes.js"></script>
     <script src="scripts/popups.js"></script>
+
+<script>
+/* Integrated customizable control center */
+(function(){
+"use strict";
+const master={
+wifi:{name:"Wi‑Fi",sub:"Home",icon:"fa-wifi",type:"toggle",size:"c2r1"},
+bluetooth:{name:"Bluetooth",sub:"Connected",icon:"fa-bluetooth-b",brand:true,type:"toggle",size:"c2r1"},
+airplane:{name:"Airplane",icon:"fa-plane",type:"toggle",size:"c1r1"},
+rotation:{name:"Rotation",sub:"Unlocked",icon:"fa-rotate-right",type:"toggle",size:"c1r1"},
+location:{name:"Location",icon:"fa-location-dot",type:"toggle",size:"c1r1",warn:true},
+battery:{name:"Battery Saver",sub:"Mode",icon:"fa-battery-half",type:"toggle",size:"c2r2"},
+darkmode:{name:"Dark Mode",icon:"fa-moon",type:"toggle",size:"c1r1"},
+flashlight:{name:"Flashlight",icon:"fa-bolt",type:"toggle",size:"c1r1",warn:true},
+focus:{name:"Focus",sub:"Off",icon:"fa-moon",type:"toggle",size:"c2r1"},
+hotspot:{name:"Hotspot",sub:"Off",icon:"fa-wifi",type:"toggle",size:"c2r1"},
+game:{name:"Game Mode",sub:"Off",icon:"fa-gamepad",type:"toggle",size:"c2r1"},
+power:{name:"Power off",icon:"fa-power-off",type:"action",size:"c2r1"},
+wallet:{name:"Wallet",icon:"fa-wallet",type:"action",size:"c1r1"},
+calculator:{name:"Calculator",icon:"fa-calculator",type:"action",size:"c1r1"},
+scan:{name:"Scan",icon:"fa-qrcode",type:"action",size:"c1r1"},
+speed:{name:"Speed up",icon:"fa-bolt",type:"action",size:"c1r1"},
+camera:{name:"Camera",icon:"fa-camera",type:"action",size:"c1r1"},
+brightness:{name:"Brightness",icon:"fa-sun",top:"fa-circle-half-stroke",type:"slider",size:"c1r2",value:78},
+volume:{name:"Volume",icon:"fa-volume-high",top:"fa-music",type:"slider",size:"c1r2",value:45}
+};
+let state={edit:false,active:[
+{id:"wifi",on:true,size:"c2r1"},{id:"bluetooth",on:true,size:"c2r1"},
+{id:"brightness",on:true,size:"c1r2",value:78},{id:"volume",on:true,size:"c1r2",value:45},
+{id:"flashlight",on:false,size:"c1r1"},{id:"darkmode",on:false,size:"c1r1"},
+{id:"battery",on:false,size:"c2r2"}],
+available:["airplane","rotation","location","focus","hotspot","game","power","wallet","calculator","scan","speed","camera"]};
+const active=document.getElementById("active-grid"), available=document.getElementById("available-grid"), editBtn=document.getElementById("cc-edit-btn"), settingsBtn=document.getElementById("cc-settings-btn"), shade=document.getElementById("shade-expanded"), hint=document.getElementById("cc-hint");
+const sizeClass=s=>{let m=s.match(/c(\d)r(\d)/);return `cc${m[1]} rr${m[2]}`};
+const parse=s=>{let m=s.match(/c(\d)r(\d)/);return{c:+m[1],r:+m[2]}};
+function icon(info){return `<i class="${info.brand?'fab':'fas'} ${info.icon}"></i>`}
+function canPlace(item,x,y,ignoreId){let size=parse(item.size);return x>=0&&y>=0&&x+size.c<=4&&!state.active.some(other=>{if(other.id===ignoreId||other.x==null||other.y==null)return false;let otherSize=parse(other.size);return x<other.x+otherSize.c&&x+size.c>other.x&&y<other.y+otherSize.r&&y+size.r>other.y})}
+function fitsPlaced(item,x,y,placed){let size=parse(item.size);return x>=0&&y>=0&&x+size.c<=4&&!placed.some(other=>{let otherSize=parse(other.item.size);return x<other.x+otherSize.c&&x+size.c>other.x&&y<other.y+otherSize.r&&y+size.r>other.y})}
+function reflowAround(anchor,x,y){let originals=state.active.map(item=>({item,x:item.x,y:item.y})),placed=[{item:anchor,x,y}];anchor.x=x;anchor.y=y;for(let item of state.active){if(item===anchor)continue;let old=originals.find(value=>value.item===item),best=null;for(let row=0;row<12;row++)for(let column=0;column<=4-parse(item.size).c;column++)if(fitsPlaced(item,column,row,placed)&&(!best||Math.abs(column-old.x)+Math.abs(row-old.y)<best.distance))best={x:column,y:row,distance:Math.abs(column-old.x)+Math.abs(row-old.y)};if(!best){originals.forEach(value=>{value.item.x=value.x;value.item.y=value.y});return false}item.x=best.x;item.y=best.y;placed.push({item,x:best.x,y:best.y})}return true}
+function ensureLayout(){state.active.forEach(item=>{if(canPlace(item,item.x??-1,item.y??-1,item.id))return;let size=parse(item.size);for(let y=0;y<12;y++){let placed=false;for(let x=0;x<=4-size.c;x++){if(canPlace(item,x,y,item.id)){item.x=x;item.y=y;placed=true;break}}if(placed)break}})}
+function render(){
+document.querySelectorAll(".cc-dragging").forEach(element=>element.remove());
+ensureLayout();
+active.innerHTML="";available.innerHTML="";
+state.active.forEach(x=>active.appendChild(tile(x)));
+state.available.forEach(id=>available.appendChild(avail(id)));
+}
+function tile(item){
+const info=master[item.id], el=document.createElement("div");
+el.className=`cc-tile ${sizeClass(item.size)} ${info.type==="slider"?"cc-slider":""}${item.on&&info.type!=="slider"?" on":""}${info.warn?" warn-tile":""}`;
+el.dataset.id=item.id;
+el.style.gridColumn=`${item.x+1} / span ${parse(item.size).c}`;el.style.gridRow=`${item.y+1} / span ${parse(item.size).r}`;
+if(state.edit){
+let rm=document.createElement("button");rm.type="button";rm.className="cc-badge cc-remove";rm.setAttribute("aria-label",`Remove ${info.name}`);rm.title=`Remove ${info.name}`;rm.innerHTML='<i class="fas fa-minus"></i>';rm.onclick=e=>{e.stopPropagation();remove(item.id)};el.appendChild(rm);
+ let rz=document.createElement("button");rz.type="button";rz.className="cc-resize";rz.setAttribute("aria-label",`Resize ${info.name}`);rz.title=`Resize ${info.name}`;rz.onpointerdown=e=>startResize(e,el,item);el.appendChild(rz);
+el.onpointerdown=e=>{if(!e.target.closest(".cc-badge,.cc-resize"))startDrag(e,el)};
+}
+if(info.type==="slider") slider(el,item,info);
+else {
+let dot=document.createElement("div");dot.className="cc-dot";dot.innerHTML=icon(info);el.appendChild(dot);
+let wrap=document.createElement("div");wrap.className="cc-label-wrap";wrap.innerHTML=`<div class="cc-label">${info.name}</div>${info.sub?`<div class="cc-sub">${item.on?info.sub:"Off"}</div>`:""}`;el.appendChild(wrap);
+el.onclick=()=>{if(state.edit)return;if(info.type==="action"){el.classList.add("on");setTimeout(()=>el.classList.remove("on"),250)}else{item.on=!item.on;render()}};
+}
+return el;
+}
+function slider(el,item,info){
+let p=parse(item.size), vertical=p.r>p.c;
+let fill=document.createElement("div");fill.className="cc-fill "+(vertical?"":"horizontal");fill.style[vertical?"height":"width"]=(item.value??info.value)+"%";el.appendChild(fill);
+el.insertAdjacentHTML("beforeend",`<div class="cc-slider-icon ${vertical?"cc-pos-bottom":"cc-pos-start"}">${icon(info)}</div><div class="cc-slider-icon ${vertical?"cc-pos-top":"cc-pos-end"}"><i class="fas ${info.top}"></i></div>`);
+const set=e=>{let r=el.getBoundingClientRect(),pct=vertical?1-(e.clientY-r.top)/r.height:(e.clientX-r.left)/r.width;pct=Math.max(0,Math.min(1,pct));item.value=Math.round(pct*100);fill.style[vertical?"height":"width"]=item.value+"%"};
+let down=false;el.onpointerdown=e=>{if(state.edit){if(!e.target.closest(".cc-resize,.cc-badge"))startDrag(e,el);return}down=true;set(e);el.setPointerCapture(e.pointerId)};el.onpointermove=e=>down&&set(e);el.onpointerup=()=>down=false;
+}
+function avail(id){let info=master[id],el=document.createElement("div");el.className="cc-tile cc1 rr1";el.innerHTML=`<button type="button" class="cc-badge cc-add" aria-label="Add ${info.name}" title="Add ${info.name}"><i class="fas fa-plus"></i></button><div class="cc-dot">${icon(info)}</div><div class="cc-label">${info.name}</div>`;el.querySelector(".cc-add").onclick=e=>{e.stopPropagation();add(id)};el.onclick=e=>{if(!e.target.closest("button"))add(id)};return el}
+function add(id){state.available=state.available.filter(x=>x!==id);state.active.push({id,on:false,size:master[id].size,value:master[id].value});render()}
+function remove(id){state.active=state.active.filter(x=>x.id!==id);if(!state.available.includes(id))state.available.push(id);render()}
+let drag=null,ph=null,ox=0,oy=0,dragGrid=null,dragCell=null;
+function gridMetrics(){let rect=active.getBoundingClientRect(),styles=getComputedStyle(active),gap=parseFloat(styles.gap)||0,padX=parseFloat(styles.paddingLeft)||0,padY=parseFloat(styles.paddingTop)||0;return{left:rect.left+padX,top:rect.top+padY,cellW:(rect.width-padX-(parseFloat(styles.paddingRight)||0)-gap*3)/4,cellH:parseFloat(styles.gridAutoRows)||64,gap}}
+function startDrag(e,el){if(!state.edit||e.button===2)return;e.preventDefault();let r=el.getBoundingClientRect();drag=el;ox=e.clientX-r.left;oy=e.clientY-r.top;dragGrid=gridMetrics();dragCell={x:state.active.find(item=>item.id===el.dataset.id).x,y:state.active.find(item=>item.id===el.dataset.id).y};ph=document.createElement("div");ph.className=el.className+" cc-placeholder";ph.style.gridColumn=el.style.gridColumn;ph.style.gridRow=el.style.gridRow;el.parentNode.insertBefore(ph,el);document.body.appendChild(el);el.classList.add("cc-dragging");el.style.width=r.width+"px";el.style.height=r.height+"px";el.setPointerCapture?.(e.pointerId);moveDrag(e);document.addEventListener("pointermove",moveDrag);document.addEventListener("pointerup",endDrag,{once:true});document.addEventListener("pointercancel",cancelDrag,{once:true})}
+function moveDrag(e){if(!drag)return;let item=state.active.find(value=>value.id===drag.dataset.id),size=parse(item.size),x=Math.max(0,Math.min(4-size.c,Math.floor((e.clientX-ox-dragGrid.left)/(dragGrid.cellW+dragGrid.gap)))),y=Math.max(0,Math.floor((e.clientY-oy-dragGrid.top)/(dragGrid.cellH+dragGrid.gap)));drag.style.left=`${e.clientX-ox}px`;drag.style.top=`${e.clientY-oy}px`;dragCell={x,y};ph.classList.remove("cc-invalid");ph.style.gridColumn=`${x+1} / span ${size.c}`;ph.style.gridRow=`${y+1} / span ${size.r}`}
+function endDrag(){document.removeEventListener("pointermove",moveDrag);document.removeEventListener("pointercancel",cancelDrag);if(!drag)return;let item=state.active.find(value=>value.id===drag.dataset.id);reflowAround(item,dragCell.x,dragCell.y);drag.remove();ph.remove();drag=ph=null;render()}
+function cancelDrag(){document.removeEventListener("pointermove",moveDrag);if(!drag)return;drag.remove();ph?.remove();drag=ph=null;render()}
+let resizing=null,startR=null,startPt=null,resizeOrigin=null;
+function startResize(e,el,item){if(!state.edit)return;e.preventDefault();e.stopPropagation();resizing={el,item};startR=el.getBoundingClientRect();startPt={x:e.clientX,y:e.clientY};resizeOrigin=parse(item.size);e.currentTarget.setPointerCapture?.(e.pointerId);document.addEventListener("pointermove",resizeMove);document.addEventListener("pointerup",resizeEnd,{once:true})}
+function resizeMove(e){if(!resizing)return;let dx=e.clientX-startPt.x,dy=e.clientY-startPt.y,gridRect=active.getBoundingClientRect(),gap=parseFloat(getComputedStyle(active).gap)||0,cellW=(gridRect.width-gap*3)/4,cellH=parseFloat(getComputedStyle(active).gridAutoRows)||64,c=Math.max(1,Math.min(4,resizeOrigin.c+Math.round(dx/(cellW+gap)))),r=Math.max(1,Math.min(4,resizeOrigin.r+Math.round(dy/(cellH+gap))));if(master[resizing.item.id].type==="slider"){if(Math.abs(dx)>=Math.abs(dy))r=1;else c=1}let nextSize=`c${c}r${r}`;if(nextSize===resizing.item.size)return;let previousSize=resizing.item.size;resizing.item.size=nextSize;if(!canPlace(resizing.item,resizing.item.x,resizing.item.y,resizing.item.id)){resizing.item.size=previousSize;return}resizing.el.className=resizing.el.className.replace(/cc[1-4] rr[1-4]/,sizeClass(nextSize));resizing.el.style.gridColumn=`${resizing.item.x+1} / span ${c}`;resizing.el.style.gridRow=`${resizing.item.y+1} / span ${r}`}
+function resizeEnd(){document.removeEventListener("pointermove",resizeMove);resizing=null;render()}
+editBtn.onclick=()=>{state.edit=!state.edit;shade.classList.toggle("cc-edit",state.edit);editBtn.classList.toggle("active-edit",state.edit);editBtn.innerHTML=state.edit?'<i class="fas fa-check"></i>':'<i class="fas fa-pencil-alt"></i>';hint.textContent=state.edit?"Drag to reorder · use the corner handle to resize":"Tap controls · Edit to customize";render()};
+settingsBtn.onclick=()=>{if(typeof openApp==="function"){shade.classList.remove("cc-edit");state.edit=false;openApp("settings")}};
+window.addEventListener("blur",cancelDrag);
+render();
+})();
+</script>
+
 </body>
 </html>
