@@ -2,6 +2,7 @@ let isDragging = false;
 let gestures=true;//false
 let previewOpen=false;
 let isDev=true;
+let editingPanel = false;
 isDev=true;
 /* =========================================
    1. DATA CONFIGURATION

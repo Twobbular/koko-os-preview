@@ -27,6 +27,7 @@ let appOpen=false;
 
 const shade = document.getElementById('notifShade');
 const appDrawer = document.getElementById('appDrawer');
+const backSwipeIndicator = document.getElementById('back-swipe-indicator');
 // Assuming infoPopup is defined globally elsewhere as in your previous snippets
 const noAppOpen = () => !document.querySelector('#appFrame.open');
 const isShadeOpen = () => shade.classList.contains('open');
@@ -87,8 +88,16 @@ hammer.on('panstart', (e) => {
     currentDeltaY = 0;
     currentDeltaX = 0;
 
+    if (openApp && xRatio < 0.16 && !editingPanel) {
+        activeGesture = 'app_back';
+        activeApp = openApp;
+        activeApp.style.transition = 'none';
+        backSwipeIndicator.classList.add('visible');
+        return;
+    }
+
     // 1. SHADE INTERACTION (Toggle or Close)
-    if (isShadeOpen()) {
+    if (isShadeOpen() && !editingPanel) {
         // Tile editing owns the pointer while the expanded control center is in edit mode.
         if (document.getElementById('shade-expanded').classList.contains('cc-edit')) {
             return;
@@ -108,7 +117,7 @@ hammer.on('panstart', (e) => {
     }
 
     // 2. OPEN SHADE (Top) - Works even when app is open
-    if (yRatio < SETTINGS_TRIGGER_ZONE) {
+    if (yRatio < SETTINGS_TRIGGER_ZONE  && !editingPanel) {
         // Reset to compact state when opening shade
         shadeState = 'compact';
         document.getElementById('shade-compact').classList.add('active');
@@ -121,7 +130,7 @@ hammer.on('panstart', (e) => {
     }
     
     // 3. APP GESTURES (Close App)
-    if (openApp && yRatio > DRAWER_TRIGGER_ZONE) {
+    if (openApp && yRatio > DRAWER_TRIGGER_ZONE && !editingPanel) {
     if (xRatio > 0.92 && false) { //made impossible for now
         activeGesture = 'split_open';
         splitApp = openApp;
@@ -139,7 +148,7 @@ hammer.on('panstart', (e) => {
 
 
     // 4. HOME SCREEN BOTTOM GESTURES
-    if (noAppOpen() && yRatio > DRAWER_TRIGGER_ZONE) {
+    if (noAppOpen() && yRatio > DRAWER_TRIGGER_ZONE && !editingPanel) {
         // If swipe starts at the very bottom edge, trigger Previews
         if (yRatio > PREVIEW_TRIGGER_ZONE) {
             activeGesture = 'preview_open';
@@ -265,6 +274,15 @@ function handleDragFrame() {
 
             appsbar.style.transform =
               `translateY(${-eased * 35}px) translateX(-50%)`;
+            break;
+        }
+
+        case 'app_back': {
+            const progress = clamp(Math.max(0, currentDeltaX) / (screenW * 0.35), 0, 1);
+            backSwipeIndicator.style.transform = `translate(${progress * 18}px, -50%) scale(${0.86 + progress * 0.14})`;
+            backSwipeIndicator.style.opacity = `${0.55 + progress * 0.45}`;
+            activeApp.style.transform = `translateX(${Math.max(0, currentDeltaX) * 0.35}px)`;
+            activeApp.style.opacity = `${1 - progress * 0.12}`;
             break;
         }
 
@@ -431,6 +449,19 @@ hammer.on('panend', (e) => {
             }
             appsbar.style.transform = `translateY(0) translateX(-50%)`;
             break;
+
+        case 'app_back': {
+            const passedThreshold = currentDeltaX > screenW * 0.2 || e.velocityX > FLICK_VELOCITY;
+            backSwipeIndicator.classList.remove('visible');
+            backSwipeIndicator.style.transform = '';
+            backSwipeIndicator.style.opacity = '';
+            if (passedThreshold) {
+                closeApp(activeApp);
+            } else {
+                resetAppStyles(activeApp);
+            }
+            break;
+        }
 
         case 'page_swipe': {
             const dx = currentDeltaX;

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music control</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            --text: #f4f8f8;
+            --muted: rgba(244, 248, 248, .62);
+            --line: rgba(255, 255, 255, .12);
+            --accent: #62d8d0;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            min-height: 100vh;
+            margin: 0;
+            padding: 12px;
+            display: grid;
+            place-items: center;
+            background: transparent;
+            color: var(--text);
+            font: 12px/1.2 "Segoe UI", sans-serif;
+            overflow: hidden;
+        }
+
+        .music-widget {
+            width: 100%;
+            min-width: 0;
+            display: grid;
+            grid-template-columns: 42px 1fr auto;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .art {
+            width: 42px;
+            height: 42px;
+            display: grid;
+            place-items: center;
+            border-radius: 10px;
+            background: linear-gradient(145deg, #235e68, #163238);
+            color: var(--accent);
+            font-size: 16px;
+        }
+
+        .track, .artist { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .track { font-weight: 700; }
+        .artist { margin-top: 4px; color: var(--muted); font-size: 10px; }
+
+        .controls { display: flex; align-items: center; gap: 4px; }
+        button {
+            width: 30px;
+            height: 30px;
+            padding: 0;
+            border: 0;
+            border-radius: 50%;
+            background: transparent;
+            color: var(--text);
+            cursor: pointer;
+            font-size: 13px;
+        }
+        button:hover { background: rgba(255, 255, 255, .12); }
+        .play { background: var(--accent); color: #123238; }
+        .play:hover { background: #85e4dc; }
+
+        @media (max-width: 220px) {
+            body { padding: 8px; }
+            .music-widget { grid-template-columns: 34px minmax(0, 1fr) auto; gap: 6px; }
+            .art { width: 34px; height: 34px; font-size: 13px; }
+            button { width: 26px; height: 26px; font-size: 11px; }
+            .track { font-size: 11px; }
+            .artist { font-size: 9px; }
+        }
+
+        @media (max-width: 135px) {
+            .music-widget { display: flex; justify-content: center; }
+            .art, .track, .artist { display: none; }
+            .controls { gap: 2px; }
+            .controls button:not(.play) { display: none; }
+            button { width: 25px; height: 25px; font-size: 10px; }
+        }
+
+        @media (max-height: 70px) {
+            body { padding: 4px; }
+            button { width: 24px; height: 24px; }
+        }
+    </style>
+</head>
+<body>
+    <main class="music-widget" aria-label="Music player">
+        <div class="art" aria-hidden="true">&#9835;</div>
+        <div>
+            <div class="track" id="track">Midnight City</div>
+            <div class="artist" id="artist">M83</div>
+        </div>
+        <div class="controls">
+            <button type="button" aria-label="Previous track" title="Previous track" id="previous">&#9198;</button>
+            <button type="button" class="play" aria-label="Play" title="Play" id="play">&#9654;</button>
+            <button type="button" aria-label="Next track" title="Next track" id="next">&#9197;</button>
+        </div>
+    </main>
+    <script>
+        const playButton = document.getElementById('play');
+        let playing = false;
+
+        playButton.addEventListener('click', () => {
+            playing = !playing;
+            playButton.innerHTML = playing ? '&#10074;&#10074;' : '&#9654;';
+            playButton.setAttribute('aria-label', playing ? 'Pause' : 'Play');
+            playButton.title = playing ? 'Pause' : 'Play';
+        });
+    </script>
+</body>
+</html>

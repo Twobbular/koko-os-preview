@@ -1,5 +1,58 @@
 const drawer = document.getElementById('appDrawer');
-let infoPopup = document.getElementById('infopopup')
+let infoPopup = document.getElementById('infopopup');
+const feedList = infoPopup.querySelector('.feed-list');
+const feedStatus = infoPopup.querySelector('.feed-status');
+const feedWindow = infoPopup.querySelector('.feed-window');
+let feedSwipe = null;
+infoPopup.querySelector('.feed-close').addEventListener('click', () => {
+    infoPopup.classList.remove('open');
+});
+feedWindow.addEventListener('pointerdown', (event) => {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    event.stopPropagation();
+    feedSwipe = { x: event.clientX, y: event.clientY, horizontal: false };
+});
+feedWindow.addEventListener('pointermove', (event) => {
+    if (!feedSwipe) return;
+    const dx = event.clientX - feedSwipe.x;
+    const dy = event.clientY - feedSwipe.y;
+    if (!feedSwipe.horizontal && Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) {
+        feedSwipe.horizontal = true;
+        feedWindow.style.transition = 'none';
+        try {
+            feedWindow.setPointerCapture?.(event.pointerId);
+        } catch (error) {
+        }
+    }
+    if (!feedSwipe.horizontal) return;
+    event.stopPropagation();
+    event.preventDefault();
+    const offset = Math.max(-window.innerWidth, Math.min(window.innerWidth, dx));
+    feedWindow.style.transform = `translateX(${offset}px)`;
+    feedWindow.style.opacity = `${Math.max(0.2, 1 - Math.abs(offset) / window.innerWidth)}`;
+});
+function finishFeedSwipe(event) {
+    if (!feedSwipe?.horizontal) {
+        feedSwipe = null;
+        return;
+    }
+    event.stopPropagation();
+    const dx = event.clientX - feedSwipe.x;
+    const dismiss = Math.abs(dx) > window.innerWidth * 0.2;
+    feedWindow.style.transition = 'transform 0.25s ease, opacity 0.25s ease';
+    feedWindow.style.transform = dismiss ? `translateX(${dx < 0 ? '-100%' : '100%'})` : '';
+    feedWindow.style.opacity = dismiss ? '0' : '';
+    if (dismiss) {
+        setTimeout(() => {
+            infoPopup.classList.remove('open');
+            feedWindow.style.transform = '';
+            feedWindow.style.opacity = '';
+        }, 250);
+    }
+    feedSwipe = null;
+}
+document.addEventListener('pointerup', finishFeedSwipe);
+document.addEventListener('pointercancel', () => { feedSwipe = null; });
 function closeShade() { shade.classList.remove('open'); }
 function closeDrawer() { drawer.classList.remove('open'); document.getElementById('appDrawer').style.transform='translateY(100%)'}
 
@@ -40,8 +93,9 @@ function updateRootVars() {
 
 function openInfo(type) {
     let contentHTML = '';
-    for(let index in info[type]){
-        const item = info[type][index];
+    const entries = info[type] || {};
+    for(let index in entries){
+        const item = entries[index];
         const iconHTML = item.icon.includes('fa-') ? `<i class="fas ${item.icon}"></i>` : `<img src="${item.icon}" />`;
         contentHTML += `
         <a href="${item.url}" class="news">
@@ -50,7 +104,11 @@ function openInfo(type) {
             <img class="news-preview" src="${item.thumbnail}" />
         </a>`;
     }
-    infoPopup.innerHTML = contentHTML;
+    feedList.innerHTML = contentHTML || '<p class="feed-empty">No stories are available right now.</p>';
+    feedStatus.textContent = contentHTML ? `${Object.keys(entries).length} stories` : 'Feed unavailable';
+    feedWindow.style.transform = '';
+    feedWindow.style.opacity = '';
+    feedWindow.style.transition = '';
     infoPopup.classList.add('open');
 }
 
